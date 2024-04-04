@@ -1,4 +1,5 @@
 use memory_stats::memory_stats;
+use random_string::generate;
 use automerge::{ObjType, AutoCommit, transaction::Transactable};
 
 fn log_memory_usage() -> () {
@@ -18,20 +19,29 @@ fn test_automerge() -> () {
     doc.put(&bob, "name", "Bob").unwrap();
     doc.put(&bob, "email", "bob@example.com").unwrap();
 
+    let charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     for i in 2..100000 {
         // println!("i: {}", i);
         let new_contact = doc.insert_object(&contacts, i, ObjType::Map).unwrap();
-        doc.put(&new_contact, "name", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ").unwrap();
-        doc.put(&new_contact, "email", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ").unwrap();
+        doc.put(&new_contact, "name", generate(50, charset)).unwrap();
+        doc.put(&new_contact, "email", generate(50, charset)).unwrap();
     }
 
-    let data: Vec<u8> = doc.save();
-    println!("doc vec u8: {}", data.len());
+    // let data: Vec<u8> = doc.save();
+    // println!("doc vec u8: {}", data.len());
+}
+
+fn _generate_random_strings() -> () {
+    let charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    for i in 0..100000 {
+        let _random_string = generate(1000, charset);
+    }
 }
 
 fn main() {
     println!("starting main");
     log_memory_usage();
+    // generate_random_strings();
     test_automerge();
     log_memory_usage();
     println!("finished main");
