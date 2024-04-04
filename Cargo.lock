@@ -44,7 +44,6 @@ dependencies = [
  "automerge_repo",
  "memory-stats",
  "random-string",
- "serde",
 ]
 
 [[package]]
