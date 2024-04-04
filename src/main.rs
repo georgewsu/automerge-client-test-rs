@@ -18,16 +18,19 @@ struct Bakery {
     pub output: u32,
     pub closing: bool,
     pub string: String,
+    pub strings: Vec<String>,
 }
 
 struct NoStorage;
 
 impl Storage for NoStorage {
     fn get(&self, _id: DocumentId) -> BoxFuture<'static, Result<Option<Vec<u8>>, StorageError>> {
+        println!("get: {}", _id);
         Box::pin(futures::future::ready(Ok(None)))
     }
 
     fn list_all(&self) -> BoxFuture<'static, Result<Vec<DocumentId>, StorageError>> {
+        println!("list_all");
         Box::pin(futures::future::ready(Ok(vec![])))
     }
 
@@ -36,6 +39,7 @@ impl Storage for NoStorage {
         _id: DocumentId,
         _changes: Vec<u8>,
     ) -> BoxFuture<'static, Result<(), StorageError>> {
+        println!("append: {}", _id);
         Box::pin(futures::future::ready(Ok(())))
     }
 
@@ -44,6 +48,7 @@ impl Storage for NoStorage {
         _id: DocumentId,
         _full_doc: Vec<u8>,
     ) -> BoxFuture<'static, Result<(), StorageError>> {
+        println!("compact: {}", _id);
         Box::pin(futures::future::ready(Ok(())))
     }
 }
@@ -70,13 +75,24 @@ fn test_automerge() -> AutoCommit {
 }
 */
 
+fn generate_string_vec(vec_size: u32, string_size: u32) -> Vec<String> {
+    // TODO: optimize
+    let charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let mut vec: Vec<String> = Vec::with_capacity(vec_size as usize);
+    for _ in 0..vec_size {
+        vec.push(generate(string_size as usize, charset));
+    }
+    return vec;
+}
+
 fn create_doc(repo_handle: &RepoHandle) -> () {
     let charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
     let bakery: Bakery = Bakery {
         output: 0,
         closing: false,
-        string: generate(1000000, charset),
+        string: generate(1000, charset),
+        strings: generate_string_vec(5000, 1000),
         ..Default::default()
     };
 
@@ -86,6 +102,8 @@ fn create_doc(repo_handle: &RepoHandle) -> () {
         reconcile(&mut tx, &bakery).unwrap();
         tx.commit();
     });
+    let _doc_id = doc_handle.document_id();
+    // println!("created doc: {}", doc_id);
 }
 
 fn main() {
@@ -97,7 +115,7 @@ fn main() {
     let repo = Repo::new(None, Box::new(NoStorage));
     let repo_handle = repo.run();
 
-    for _ in 0..100 {
+    for _ in 0..10 {
         create_doc(&repo_handle);
     }
 
