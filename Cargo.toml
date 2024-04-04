@@ -8,5 +8,7 @@ edition = "2021"
 [dependencies]
 automerge = "0.5.9"
 automerge_repo = "0.1.0"
+autosurgeon = "0.8.3"
+futures = "0.3.30"
 memory-stats = "1.1.0"
 random-string = "1.1.0"
