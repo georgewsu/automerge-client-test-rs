@@ -1,10 +1,12 @@
 use std::collections::HashMap;
+use std::{thread, time};
 use memory_stats::memory_stats;
 use random_string::generate;
 // use automerge::{ObjType, AutoCommit, transaction::Transactable};
 use automerge_repo::{DocumentId, Repo, RepoHandle, Storage, StorageError};
 use futures::future::{BoxFuture};
 use autosurgeon::{Hydrate, reconcile, Reconcile};
+use std::cell::RefCell;
 
 #[derive(Debug, Clone, Reconcile, Hydrate, PartialEq)]
 struct Customer {
@@ -21,9 +23,47 @@ struct Bakery {
     pub strings: Vec<String>,
 }
 
-struct NoStorage;
+struct HashMapStorage {
+    docs: HashMap<DocumentId, Vec<u8>>
+}
 
-impl Storage for NoStorage {
+impl HashMapStorage {
+    fn new() -> Self {
+        HashMapStorage {
+            docs: HashMap::new()
+        }
+    }
+    fn append_doc(&mut self, id: DocumentId, changes: Vec<u8>) -> () {
+        self.docs.insert(id, changes);
+    }
+    fn list_all(&self) -> () {
+        for (key, value) in &self.docs {
+            println!("{}: {}", key, value.len());
+        }
+    }
+}
+
+struct SimpleStorage {
+    hash_map_storage: RefCell<HashMapStorage>
+}
+
+impl SimpleStorage {
+    fn new() -> Self {
+        SimpleStorage {
+            hash_map_storage: RefCell::new(HashMapStorage::new())
+        }
+    }
+
+    fn append_doc(&self, id: DocumentId, changes: Vec<u8>) -> () {
+        self.hash_map_storage.borrow_mut().append_doc(id, changes);
+    }
+
+    fn list_all_from_storage(&self) -> () {
+        self.hash_map_storage.borrow().list_all();
+    }
+}
+
+impl Storage for SimpleStorage {
     fn get(&self, _id: DocumentId) -> BoxFuture<'static, Result<Option<Vec<u8>>, StorageError>> {
         println!("get: {}", _id);
         Box::pin(futures::future::ready(Ok(None)))
@@ -31,6 +71,7 @@ impl Storage for NoStorage {
 
     fn list_all(&self) -> BoxFuture<'static, Result<Vec<DocumentId>, StorageError>> {
         println!("list_all");
+        self.list_all_from_storage();
         Box::pin(futures::future::ready(Ok(vec![])))
     }
 
@@ -40,6 +81,7 @@ impl Storage for NoStorage {
         _changes: Vec<u8>,
     ) -> BoxFuture<'static, Result<(), StorageError>> {
         println!("append: {}", _id);
+        self.append_doc(_id.clone(), _changes.clone());
         Box::pin(futures::future::ready(Ok(())))
     }
 
@@ -112,14 +154,18 @@ fn main() {
 
     // test_automerge();
 
-    let repo = Repo::new(None, Box::new(NoStorage));
+    let storage = SimpleStorage::new();
+    let repo = Repo::new(None, Box::new(storage));
     let repo_handle = repo.run();
 
     for _ in 0..10 {
         create_doc(&repo_handle);
     }
 
+    repo_handle.list_all();
     // let list_result = repo_handle.list_all();
+
+    thread::sleep(time::Duration::from_millis(5000));
 
     log_memory_usage();
     println!("finished main");
