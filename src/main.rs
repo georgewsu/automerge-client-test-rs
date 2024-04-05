@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::{thread, time};
+// use std::{thread, time};
 use memory_stats::memory_stats;
 use random_string::generate;
 // use automerge::{ObjType, AutoCommit, transaction::Transactable};
@@ -8,17 +8,8 @@ use futures::future::{BoxFuture};
 use autosurgeon::{Hydrate, reconcile, Reconcile};
 use std::cell::RefCell;
 
-#[derive(Debug, Clone, Reconcile, Hydrate, PartialEq)]
-struct Customer {
-    pub number: u32,
-    pub views_of_others: HashMap<String, u32>,
-}
-
 #[derive(Default, Debug, Clone, Reconcile, Hydrate, PartialEq)]
-struct Bakery {
-    pub customers: HashMap<String, Customer>,
-    pub output: u32,
-    pub closing: bool,
+struct DocumentData {
     pub string: String,
     pub strings: Vec<String>,
 }
@@ -97,7 +88,8 @@ impl Storage for SimpleStorage {
 
 fn log_memory_usage() -> () {
     if let Some(usage) = memory_stats() {
-        println!("physical memory usage: {}M", usage.physical_mem / 1000000);
+        println!("physical memory usage: {}M", usage.physical_mem / 1_000_000);
+        println!("virtual memory usage: {}M", usage.virtual_mem / 1_000_000);
     }
 }
 
@@ -130,18 +122,16 @@ fn generate_string_vec(vec_size: u32, string_size: u32) -> Vec<String> {
 fn create_doc(repo_handle: &RepoHandle) -> () {
     let charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
-    let bakery: Bakery = Bakery {
-        output: 0,
-        closing: false,
+    let doc_data: DocumentData = DocumentData {
         string: generate(1000, charset),
-        strings: generate_string_vec(5000, 1000),
+        strings: generate_string_vec(10_000, 1000),
         ..Default::default()
     };
 
     let doc_handle = repo_handle.new_document();
     doc_handle.with_doc_mut(|doc| {
         let mut tx = doc.transaction();
-        reconcile(&mut tx, &bakery).unwrap();
+        reconcile(&mut tx, &doc_data).unwrap();
         tx.commit();
     });
     let _doc_id = doc_handle.document_id();
@@ -162,11 +152,15 @@ fn main() {
         create_doc(&repo_handle);
     }
 
-    repo_handle.list_all();
-    // let list_result = repo_handle.list_all();
+    log_memory_usage();
 
-    thread::sleep(time::Duration::from_millis(5000));
+    let list_result_future = repo_handle.list_all();
+    let _list_result = futures::executor::block_on(list_result_future);
 
     log_memory_usage();
+
+    // thread::sleep(time::Duration::from_millis(5000));
+    // log_memory_usage();
+
     println!("finished main");
 }
