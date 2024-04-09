@@ -138,6 +138,15 @@ fn create_doc(repo_handle: &RepoHandle) -> () {
     // println!("created doc: {}", doc_id);
 }
 
+fn generate_data(vec_size: u32, string_size: u32) -> DocumentData {
+    let charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    DocumentData {
+        string: generate(string_size as usize, charset),
+        strings: generate_string_vec(vec_size, string_size),
+        ..Default::default()
+    }
+}
+
 fn main() {
     println!("starting main");
     log_memory_usage();
@@ -149,6 +158,7 @@ fn main() {
     let repo_handle = repo.run();
 
     for _ in 0..10 {
+        // generate_data(10_000, 1000);
         create_doc(&repo_handle);
     }
 
